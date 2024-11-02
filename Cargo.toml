@@ -1,0 +1,15 @@
+[workspace]
+members = [
+  "starfish",
+]
+
+resolver = "2"
+
+[workspace.package]
+name = "startfish-sleep"
+version = "0.0.1"
+edition = "2021"
+license = "Apache-2.0"
+
+[workspace.dependencies]
+wgpu = "22.1.0"
