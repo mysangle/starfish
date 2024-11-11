@@ -35,6 +35,13 @@ pub trait RenderBackend: Sized + Debug + 'static {
         window_data: &mut Self::WindowData,
     ) -> Result<()>;
 
+    fn resize_window(
+        &mut self,
+        window_data: &mut Self::WindowData,
+        active_window_data: &mut Self::ActiveWindowData<'_>,
+        size: SizeU32,
+    ) -> Result<()>;
+
     fn render(
         &mut self,
         window_data: &mut Self::WindowData,
@@ -43,5 +50,5 @@ pub trait RenderBackend: Sized + Debug + 'static {
 }
 
 pub trait Scene<B: RenderBackend>: Clone + Debug {
-
+    fn new() -> Self;
 }

@@ -6,7 +6,7 @@ use std::{
 use anyhow::{anyhow, Result};
 use vello::{
     peniko::Color as VelloColor,
-    {AaConfig, Renderer as VelloRenderer, RenderParams, Scene as VelloScene},
+    AaConfig, Renderer as VelloRenderer, RenderParams, Scene as VelloScene,
 };
 
 use crate::render_backend::{RenderBackend, WindowHandle};
@@ -92,7 +92,20 @@ impl RenderBackend for VelloBackend {
             _handle: impl WindowHandle,
             _data: &mut Self::ActiveWindowData<'_>,
             _window_data: &mut Self::WindowData,
-        ) -> Result<()> {
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn resize_window(
+            &mut self,
+            window_data: &mut Self::WindowData,
+            active_window_data: &mut Self::ActiveWindowData<'_>,
+            size: crate::render_backend::SizeU32,
+    ) -> Result<()> {
+        window_data
+            .adapter
+            .resize_surface(&mut active_window_data.surface, size.width, size.height);
+
         Ok(())
     }
 

@@ -34,8 +34,8 @@ pub struct Window<'a, D: SceneDrawer<B>, B: RenderBackend> {
 impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
     pub fn new(event_loop: &ActiveEventLoop, backend: &mut B, opts: WindowOptions, el: EventLoopProxy<StarfishEvent<D, B>>) -> Result<Self> {
         let attributes = WInitWindow::default_attributes()
-            .with_title("Starfish sleep")
-            .with_inner_size(opts.inner_size.unwrap_or(LogicalSize::new(1024.0, 768.0).into()));
+            .with_title(opts.title)
+            .with_inner_size(LogicalSize::new(opts.width, opts.height));
         let window = event_loop
             .create_window(attributes)
             .map_err(|e| anyhow!(e.to_string()))?;
@@ -113,6 +113,10 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
         match event {
             WindowEvent::CloseRequested => {
                 event_loop.exit();
+            },
+            WindowEvent::Resized(size) => {
+                backend.resize_window(&mut self.renderer_data, active_window_data, SizeU32::new(size.width, size.height))?;
+                window.request_redraw();
             },
             WindowEvent::RedrawRequested => {
                 let size = window.inner_size();

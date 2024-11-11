@@ -51,7 +51,8 @@ fn main() -> anyhow::Result<()> {
 
     let mut application: Application<Drawer, Backend> = Application::new(VelloBackend::new());
     let opts = WindowOptions::new()
-        .set_size(1024, 768);
+        .with_title("Starfish Sleep")
+        .with_size(1024, 768);
     application.initial_tab(url, opts);
     application.run()?;
 

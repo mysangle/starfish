@@ -193,6 +193,12 @@ impl InstanceAdapter {
         Ok(surface)
     }
 
+    pub fn resize_surface(&self, surface: &mut SurfaceWrapper, width: u32, height: u32) {
+        surface.config.width = width;
+        surface.config.height = height;
+        self.configure_surface(surface);
+    }
+
     fn configure_surface(&self, surface: &SurfaceWrapper) {
         surface.surface.configure(&self.device, &surface.config);
     }

@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "starfish",
+  "starfish_renderer",
 ]
 
 resolver = "2"
