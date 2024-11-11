@@ -16,17 +16,28 @@ use winit::{
 
 #[derive(Debug, Default)]
 pub struct WindowOptions {
-    pub inner_size: Option<Size>,
+    pub title: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl WindowOptions {
     pub fn new() -> Self {
         Self {
-            inner_size: None,
+            title: "No Title".to_string(),
+            width: 1024,
+            height: 768,
         }
     }
-    pub fn set_size(mut self, width: u16, height: u16) -> WindowOptions {
-        self.inner_size = Some(LogicalSize::new(width as f64, height as f64).into());
+
+    pub fn with_size(mut self, width: u32, height: u32) -> WindowOptions {
+        self.width = width;
+        self.height = height;
+        self
+    }
+
+    pub fn with_title<T: Into<String>>(mut self, title: T) -> Self {
+        self.title = title.into();
         self
     }
 }

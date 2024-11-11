@@ -20,5 +20,7 @@ impl From<VelloScene> for Scene {
 }
 
 impl<B: RenderBackend> TScene<B> for Scene {
-
+    fn new() -> Self {
+        VelloScene::new().into()
+    }
 }
