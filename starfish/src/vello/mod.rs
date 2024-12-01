@@ -9,13 +9,23 @@ use vello::{
     AaConfig, Renderer as VelloRenderer, RenderParams, Scene as VelloScene,
 };
 
-use crate::render_backend::{RenderBackend, WindowHandle};
+use crate::render_backend::{RenderBackend, RenderRect, Scene as TScene, WindowHandle};
 
+mod border;
+mod brush;
+mod color;
+mod rect;
 mod render;
 mod scene;
+mod transform;
 
+use border::{Border, BorderRadius, BorderRenderOptions, BorderSide};
+use brush::Brush;
+use color::Color;
+use rect::Rect;
 use render::{InstanceAdapter, Renderer, RendererOptions, SurfaceWrapper};
 use scene::Scene;
+use transform::Transform;
 
 pub struct VelloWindowData {
     pub(crate) adapter: Arc<InstanceAdapter>,
@@ -37,6 +47,12 @@ impl Debug for VelloBackend {
     }
 }
 
+impl Default for VelloBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VelloBackend {
     pub fn new() -> Self {
         Self {}
@@ -49,9 +65,28 @@ impl VelloBackend {
  * render             -> SurfaceTexture
  */
 impl RenderBackend for VelloBackend {
-    type Scene = Scene;
+    type Rect = Rect;           // vello::kurbo::Rect wrapper
+    type Border = Border;
+    type BorderSide = BorderSide;
+    type BorderRadius = BorderRadius;
+    type Transform = Transform; // vello::kurbo::Affine wrapper
+    type Color = Color;         // vello::peniko::Color wrapper
+    type Brush = Brush;         // vello::peniko::Brush wrapper
+    type Scene = Scene;         // vello::Scene wrapper
     type WindowData = VelloWindowData;
-    type ActiveWindowData<'a> = VelloActiveWindowData<'a>;
+    type ActiveWindowData<'a> = VelloActiveWindowData<'a>; // Surface Wrapper
+
+    fn draw_rect(&mut self, data: &mut Self::WindowData, rect: &RenderRect<Self>) {
+        data.scene.draw_rect(rect);
+    }
+
+    fn apply_scene(&mut self, data: &mut Self::WindowData, scene: &Self::Scene, transform: Option<Self::Transform>) {
+        data.scene.apply_scene(scene, transform);
+    }
+
+    fn reset(&mut self, data: &mut Self::WindowData) {
+        data.scene.reset();
+    }
 
     fn create_window_data(&mut self, _handle: impl WindowHandle) -> Result<Self::WindowData> {
         tracing::info!("Creating window data");

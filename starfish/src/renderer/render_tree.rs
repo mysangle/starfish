@@ -1,6 +1,9 @@
 
 use crate::{
-    render_backend::{RenderBackend, Scene as TScene, SizeU32, WindowedEventLoop},
+    render_backend::{
+        geo::FP,
+        Brush, Color, Rect, RenderBackend, RenderRect, Scene as TScene, SizeU32, WindowedEventLoop,
+    },
     renderer::draw::SceneDrawer,
     shared::types::Result,
 };
@@ -12,6 +15,7 @@ pub struct TreeDrawer<B: RenderBackend> {
     size: Option<SizeU32>,
     dirty: bool,
     tree_scene: Option<B::Scene>,
+    scene_transform: Option<B::Transform>,
 }
 
 impl<B: RenderBackend> SceneDrawer<B> for TreeDrawer<B> {
@@ -36,6 +40,30 @@ impl<B: RenderBackend> SceneDrawer<B> for TreeDrawer<B> {
             self.tree_scene = Some(scene);
         }
 
+        backend.reset(data);
+
+        let bg = Rect::new(0.0, 0.0, size.width as FP, size.height as FP);
+        let rect = RenderRect {
+            rect: bg,
+            transform: None,
+            radius: None,
+            brush: Brush::color(Color::WHITE),
+            brush_transform: None,
+            border: None,
+        };
+
+        backend.draw_rect(data, &rect);
+
+        if let Some(scene) = &self.tree_scene {
+            backend.apply_scene(data, scene, self.scene_transform.clone());
+        }
+
+        if self.dirty {
+            self.dirty = false;
+
+            return true;
+        }
+
         false
     }
 
@@ -50,6 +78,7 @@ impl<B: RenderBackend> TreeDrawer<B> {
             size: None,
             dirty: false,
             tree_scene: None,
+            scene_transform: None,
         }
     }
 }
