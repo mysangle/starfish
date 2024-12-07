@@ -1,6 +1,6 @@
 
 use crate::{
-    render_backend::Brush as TBrush,
+    shared::render_backend::Brush as TBrush,
     vello::{Color, VelloBackend},
 };
 

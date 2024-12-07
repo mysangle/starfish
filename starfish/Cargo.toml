@@ -7,9 +7,12 @@ license.workspace = true
 [dependencies]
 anyhow = "1.0.90"
 clap = { version = "4.5.19", features = ["derive"] }
+derive_more = {version = "1.0.0", features = ["display"]}
+encoding_rs = "0.8.35"
 futures = "0.3.31"
 raw-window-handle = "0.6.2"
 slotmap = "1.0.7"
+taffy = "0.6.2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = "2.10.1"

@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
 use crate::{
-    event::StarfishEvent, render_backend::RenderBackend, renderer::draw::SceneDrawer, shared::types::Result, tabs::Tab, window::Window
+    event::StarfishEvent,
+    shared::{traits::config::ModuleConfiguration, types::Result},
+    tabs::Tab, window::Window
 };
 
 use anyhow::anyhow;
 use url::Url;
 use winit::{
     application::ApplicationHandler,
-    dpi::{LogicalSize, Size},
     event::{DeviceEvent, DeviceId, StartCause, WindowEvent},
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     window::WindowId,
@@ -42,16 +43,17 @@ impl WindowOptions {
     }
 }
 
-pub struct Application<'a, D: SceneDrawer<B>, B: RenderBackend> {
-    windows: HashMap<WindowId, Window<'a, D, B>>,
+#[allow(clippy::type_complexity)]
+pub struct Application<'a, C: ModuleConfiguration> {
+    windows: HashMap<WindowId, Window<'a, C>>,
     open_windows: Vec<(Url, WindowOptions)>,
-    backend: B,
+    backend: C::RenderBackend,
     #[allow(clippy::type_complexity)]
-    proxy: Option<EventLoopProxy<StarfishEvent<D, B>>>,
+    proxy: Option<EventLoopProxy<StarfishEvent<C>>>,
 }
 
-impl<'a, D: SceneDrawer<B>, B: RenderBackend> Application<'a, D, B> {
-    pub fn new(backend: B) -> Self {
+impl<'a, C: ModuleConfiguration> Application<'a, C> {
+    pub fn new(backend: C::RenderBackend) -> Self {
         Self {
             windows: HashMap::new(),
             open_windows: Vec::new(),
@@ -79,7 +81,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Application<'a, D, B> {
     }
 }
 
-impl<'a, D: SceneDrawer<B>, B: RenderBackend> ApplicationHandler<StarfishEvent<D, B>> for Application<'a, D, B> {
+impl<C: ModuleConfiguration> ApplicationHandler<StarfishEvent<C>> for Application<'_, C> {
     fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: StartCause) {
         let _ = (event_loop, cause);
     }
@@ -94,7 +96,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> ApplicationHandler<StarfishEvent<D
         }
     }
 
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: StarfishEvent<D, B>) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: StarfishEvent<C>) {
         match event {
             StarfishEvent::OpenInitial => {
                 tracing::info!("Opening initial windows");
@@ -107,7 +109,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> ApplicationHandler<StarfishEvent<D
                             tracing::error!("Error opening window: {e:?}");
                             if self.windows.is_empty() {
                                 tracing::info!("No more windows; exiting event loop");
-                                event_loop.exit();;
+                                event_loop.exit();
                             }
                             return;
                         }

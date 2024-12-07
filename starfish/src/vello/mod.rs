@@ -9,7 +9,7 @@ use vello::{
     AaConfig, Renderer as VelloRenderer, RenderParams, Scene as VelloScene,
 };
 
-use crate::render_backend::{RenderBackend, RenderRect, Scene as TScene, WindowHandle};
+use crate::shared::render_backend::{RenderBackend, RenderRect, Scene as TScene, WindowHandle};
 
 mod border;
 mod brush;
@@ -109,7 +109,7 @@ impl RenderBackend for VelloBackend {
             &mut self,
             handle: impl WindowHandle + 'a,
             data: &mut Self::WindowData,
-            size: crate::render_backend::SizeU32,
+            size: crate::shared::render_backend::SizeU32,
         ) -> Result<Self::ActiveWindowData<'a>> {
         let surface = data
             .adapter
@@ -135,7 +135,7 @@ impl RenderBackend for VelloBackend {
             &mut self,
             window_data: &mut Self::WindowData,
             active_window_data: &mut Self::ActiveWindowData<'_>,
-            size: crate::render_backend::SizeU32,
+            size: crate::shared::render_backend::SizeU32,
     ) -> Result<()> {
         window_data
             .adapter

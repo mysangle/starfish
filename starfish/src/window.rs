@@ -3,9 +3,11 @@ use std::sync::Arc;
 use crate::{
     application::WindowOptions,
     event::StarfishEvent,
-    render_backend::{RenderBackend, SizeU32, WindowedEventLoop},
-    renderer::draw::SceneDrawer,
-    shared::types::Result,
+    shared::{
+        render_backend::{RenderBackend, SizeU32, WindowedEventLoop},
+        traits::{config::ModuleConfiguration, draw::TreeDrawer},
+        types::Result,
+    },
     tabs::{Tab, TabID, Tabs},
 };
 
@@ -23,16 +25,16 @@ pub enum WindowState<'a, B: RenderBackend> {
     Suspended,
 }
 
-pub struct Window<'a, D: SceneDrawer<B>, B: RenderBackend> {
-    state: WindowState<'a, B>,
+pub struct Window<'a, C: ModuleConfiguration> {
+    state: WindowState<'a, C::RenderBackend>,
     window: Arc<WInitWindow>,
-    renderer_data: B::WindowData,
-    tabs: Tabs<D, B>,
-    el: WindowEventLoop<D, B>,
+    renderer_data: <C::RenderBackend as RenderBackend>::WindowData,
+    tabs: Tabs<C>,
+    el: WindowEventLoop<C>,
 }
 
-impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
-    pub fn new(event_loop: &ActiveEventLoop, backend: &mut B, opts: WindowOptions, el: EventLoopProxy<StarfishEvent<D, B>>) -> Result<Self> {
+impl<'a, C: ModuleConfiguration> Window<'a, C> {
+    pub fn new(event_loop: &ActiveEventLoop, backend: &mut C::RenderBackend, opts: WindowOptions, el: EventLoopProxy<StarfishEvent<C>>) -> Result<Self> {
         let attributes = WInitWindow::default_attributes()
             .with_title(opts.title)
             .with_inner_size(LogicalSize::new(opts.width, opts.height));
@@ -65,7 +67,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
         self.window.request_redraw();
     }
 
-    pub fn add_tab(&mut self, tab: Tab<D, B>) {
+    pub fn add_tab(&mut self, tab: Tab<C>) {
         let id = self.tabs.add_tab(tab);
 
         if self.tabs.active == TabID::default() {
@@ -75,7 +77,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
         self.window.request_redraw();
     }
 
-    pub fn resumed(&mut self, backend: &mut B) -> Result<()> {
+    pub fn resumed(&mut self, backend: &mut C::RenderBackend) -> Result<()> {
         if !matches!(self.state, WindowState::Suspended) {
             return Ok(());
         };
@@ -90,7 +92,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
         Ok(())
     }
 
-    pub fn suspended(&mut self, backend: &mut B) {
+    pub fn suspended(&mut self, backend: &mut C::RenderBackend) {
         let WindowState::Active { surface: data } = &mut self.state else {
             return;
         };
@@ -102,7 +104,7 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
         self.state = WindowState::Suspended;
     }
 
-    pub fn event(&mut self, event_loop: &ActiveEventLoop, backend: &mut B, event: WindowEvent) -> Result<()> {
+    pub fn event(&mut self, event_loop: &ActiveEventLoop, backend: &mut C::RenderBackend, event: WindowEvent) -> Result<()> {
         let WindowState::Active { surface: active_window_data } = &mut self.state
         else {
             return Ok(());
@@ -141,12 +143,12 @@ impl<'a, D: SceneDrawer<B>, B: RenderBackend> Window<'a, D, B> {
     }
 }
 
-pub(crate) struct WindowEventLoop<D: SceneDrawer<B>, B: RenderBackend> {
-    proxy: EventLoopProxy<StarfishEvent<D, B>>,
+pub(crate) struct WindowEventLoop<C: ModuleConfiguration> {
+    proxy: EventLoopProxy<StarfishEvent<C>>,
     id: WindowId,
 }
 
-impl<D: SceneDrawer<B>, B: RenderBackend> Clone for WindowEventLoop<D, B> {
+impl<C: ModuleConfiguration> Clone for WindowEventLoop<C> {
     fn clone(&self) -> Self {
         Self {
             proxy: self.proxy.clone(),
@@ -155,6 +157,6 @@ impl<D: SceneDrawer<B>, B: RenderBackend> Clone for WindowEventLoop<D, B> {
     }
 }
 
-impl<D: SceneDrawer<B>, B: RenderBackend> WindowedEventLoop for WindowEventLoop<D, B> {
+impl<C: ModuleConfiguration> WindowedEventLoop for WindowEventLoop<C> {
 
 }

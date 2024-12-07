@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::render_backend::WindowHandle;
+use crate::shared::render_backend::WindowHandle;
 
 use anyhow::{anyhow, Result};
 use vello::{AaSupport, Renderer as VelloRenderer, RendererOptions as VelloRendererOptions};
