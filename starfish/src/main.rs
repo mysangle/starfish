@@ -1,6 +1,24 @@
 
 use anyhow::anyhow;
-use starfish::{application::{Application, WindowOptions}, renderer::render_tree::TreeDrawer, vello::VelloBackend};
+use starfish::{
+    application::{Application, WindowOptions},
+    css3::system::Css3System,
+    html5::{
+        document::{
+            builder::DocumentBuilderImpl,
+            document_impl::DocumentImpl,
+            fragment::DocumentFragmentImpl,
+        },
+        parser::Html5Parser,
+    },
+    renderer::draw::TreeDrawerImpl,
+    shared::traits::config::{
+        HasCssSystem, HasDocument, HasHtmlParser, HasLayouter, HasRenderBackend, HasRenderTree, HasTreeDrawer, ModuleConfiguration,
+    },
+    taffy::TaffyLayouter,
+    util::render_tree::RenderTree,
+    vello::VelloBackend,
+};
 
 use clap::ArgAction;
 use url::Url;
@@ -10,8 +28,42 @@ const LOG_LEVEL_PERMITTED: [&str; 5] = ["trace", "debug", "info", "warn", "error
 
 // Application -> [Window] -> Tab -> SceneDrawer
 //             -> RenderBackend
-type Backend = VelloBackend;
-type Drawer = TreeDrawer<Backend>;
+
+#[derive(Clone, Debug, PartialEq)]
+struct Config;
+
+impl HasCssSystem for Config {
+    type CssSystem = Css3System;
+}
+
+impl HasDocument for Config {
+    type Document = DocumentImpl<Self>;
+    type DocumentFragment = DocumentFragmentImpl<Self>;
+    type DocumentBuilder = DocumentBuilderImpl;
+}
+
+impl HasHtmlParser for Config {
+    type HtmlParser = Html5Parser<'static, Self>;
+}
+
+impl HasLayouter for Config {
+    type Layouter = TaffyLayouter;
+    type LayoutTree = RenderTree<Self>;
+}
+
+impl HasRenderTree for Config {
+    type RenderTree = RenderTree<Self>;
+}
+
+impl HasTreeDrawer for Config {
+    type TreeDrawer = TreeDrawerImpl<Self>;
+}
+
+impl HasRenderBackend for Config {
+    type RenderBackend = VelloBackend;
+}
+
+impl ModuleConfiguration for Config {}
 
 fn main() -> anyhow::Result<()> {
     // check command line argument
@@ -49,7 +101,7 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("Hello, Starfish Sleep!");
 
-    let mut application: Application<Drawer, Backend> = Application::new(VelloBackend::new());
+    let mut application: Application<Config> = Application::new(VelloBackend::new());
     let opts = WindowOptions::new()
         .with_title("Starfish Sleep")
         .with_size(1024, 768);

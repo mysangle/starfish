@@ -1,3 +1,4 @@
+
 use std::{
     fmt::Debug,
     ops::{Mul, MulAssign},
@@ -7,6 +8,8 @@ use anyhow::Result;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 pub mod geo;
+pub mod layout;
+
 pub use geo::*;
 
 pub trait WindowHandle: HasDisplayHandle + HasWindowHandle + Send + Sync + Clone {}
@@ -194,7 +197,7 @@ pub struct RenderBorder<B: RenderBackend> {
     pub transform: Option<B::Transform>,
 }
 
-pub trait Transform: Sized + Mul<Self> + MulAssign + Clone + Send {
+pub trait Transform: Sized + Mul<Self> + MulAssign + Clone + Send + Debug {
 
 }
 
@@ -262,3 +265,4 @@ pub trait Color {
     const MAGENTA: Self;
     const TRANSPARENT: Self;
 }
+

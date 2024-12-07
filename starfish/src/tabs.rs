@@ -1,19 +1,19 @@
 
-use crate::{
-    render_backend::RenderBackend,
-    renderer::draw::SceneDrawer,
-    shared::types::Result,
+use crate::shared::{
+    traits::{config::ModuleConfiguration, draw::TreeDrawer},
+    types::Result,
 };
 
 use slotmap::{DefaultKey, SlotMap};
 use url::Url;
 
-pub struct Tabs<D: SceneDrawer<B>, B: RenderBackend> {
-    pub tabs: SlotMap<DefaultKey, Tab<D, B>>,
+pub struct Tabs<C: ModuleConfiguration> {
+    #[allow(clippy::type_complexity)]
+    pub tabs: SlotMap<DefaultKey, Tab<C>>,
     pub active: TabID,
 }
 
-impl<D: SceneDrawer<B>, B: RenderBackend> Default for Tabs<D, B> {
+impl<C: ModuleConfiguration> Default for Tabs<C> {
     fn default() -> Self {
         Self {
             tabs: SlotMap::new(),
@@ -22,8 +22,8 @@ impl<D: SceneDrawer<B>, B: RenderBackend> Default for Tabs<D, B> {
     }
 }
 
-impl<D: SceneDrawer<B>, B: RenderBackend> Tabs<D, B> {
-    pub fn add_tab(&mut self, tab: Tab<D, B>) -> TabID {
+impl<C: ModuleConfiguration> Tabs<C> {
+    pub fn add_tab(&mut self, tab: Tab<C>) -> TabID {
         TabID(self.tabs.insert(tab))
     }
 
@@ -35,30 +35,27 @@ impl<D: SceneDrawer<B>, B: RenderBackend> Tabs<D, B> {
         self.active = id;
     }
 
-    pub fn get_current_tab(&mut self) -> Option<&mut Tab<D, B>> {
+    pub fn get_current_tab(&mut self) -> Option<&mut Tab<C>> {
         self.tabs.get_mut(self.active.0)
     }
 }
 
 #[derive(Debug)]
-pub struct Tab<D: SceneDrawer<B>, B: RenderBackend> {
+pub struct Tab<C: ModuleConfiguration> {
     pub title: String,
     pub url: Url,
-    pub data: D,
-    #[allow(clippy::type_complexity)]
-    _marker: std::marker::PhantomData<fn(B)>,
+    pub data: C::TreeDrawer,
 }
 
-impl<D: SceneDrawer<B>, B: RenderBackend> Tab<D, B> {
+impl<C: ModuleConfiguration> Tab<C> {
     pub async fn from_url(url: Url) -> Result<Self> {
-        let data = D::from_url(url.clone()).await?;
+        let data = C::TreeDrawer::from_url(url.clone()).await?;
 
         tracing::info!("Tab created: {}", url.as_str()); 
         Ok(Self {
             title: url.as_str().to_string(),
-            url: url,
+            url,
             data,
-            _marker: std::marker::PhantomData,
         })
     }
 }
