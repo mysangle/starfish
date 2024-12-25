@@ -1,5 +1,5 @@
 
-use crate::shared::traits::config::HasLayouter;
+use crate::interface::config::HasLayouter;
 
 pub trait RenderTree<C: HasLayouter>: Send + 'static {
     

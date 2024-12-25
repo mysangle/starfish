@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use crate::{
-    shared::render_backend::{RenderRect, Scene as TScene},
+    interface::render_backend::{RenderRect, Scene as TScene},
     vello::{Border, BorderRenderOptions, Transform, VelloBackend},
 };
 

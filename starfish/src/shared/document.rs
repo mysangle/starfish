@@ -1,10 +1,10 @@
 use std::{
-    cell::RefCell,
+    cell::{Ref, RefCell, RefMut},
     fmt::{Formatter, Debug},
     rc::Rc,
 };
 
-use crate::shared::traits::config::HasDocument;
+use crate::interface::config::HasDocument;
 
 pub struct DocumentHandle<C: HasDocument>(pub Rc<RefCell<C::Document>>);
 
@@ -29,5 +29,22 @@ where
 impl<C: HasDocument> Clone for DocumentHandle<C> {
     fn clone(&self) -> Self {
         Self(Rc::clone(&self.0))
+    }
+}
+
+impl<C: HasDocument> DocumentHandle<C> {
+    /// Create a new DocumentHandle from a document
+    pub fn create(document: C::Document) -> Self {
+        DocumentHandle(Rc::new(RefCell::new(document)))
+    }
+
+    /// Returns the document as referenced by the handle
+    pub fn get(&self) -> Ref<C::Document> {
+        self.0.borrow()
+    }
+
+    /// Returns a
+    pub fn get_mut(&mut self) -> RefMut<C::Document> {
+        self.0.borrow_mut()
     }
 }

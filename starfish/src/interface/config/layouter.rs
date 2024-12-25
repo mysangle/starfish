@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
-use crate::shared::{
-    render_backend::layout::{LayoutTree, Layouter},
-    traits::config::HasCssSystem,
+use crate::interface::{
+    config::HasCssSystem,
+    layout::{LayoutTree, Layouter},
 };
 
 pub trait HasLayouter: HasCssSystem + Debug + 'static {

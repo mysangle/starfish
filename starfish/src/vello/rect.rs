@@ -1,5 +1,8 @@
 
-use crate::shared::render_backend::{FP, Rect as Trect};
+use crate::{
+    interface::render_backend::Rect as Trect,
+    shared::geo::FP,
+};
 
 use vello::kurbo::Rect as VelloRect;
 

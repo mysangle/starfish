@@ -1,5 +1,5 @@
 
-use crate::shared::render_backend::Color as TColor;
+use crate::interface::render_backend::Color as TColor;
 
 use vello::peniko::Color as VelloColor;
 

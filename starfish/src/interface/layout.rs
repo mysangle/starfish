@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::shared::traits::config::HasLayouter;
+use crate::interface::config::HasLayouter;
 
 pub trait LayoutTree<C: HasLayouter<LayoutTree = Self>>: Sized + Debug + 'static {
 
