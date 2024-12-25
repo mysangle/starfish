@@ -2,8 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     event::StarfishEvent,
-    shared::{traits::config::ModuleConfiguration, types::Result},
-    tabs::Tab, window::Window
+    interface::config::ModuleConfiguration,
+    shared::types::Result,
+    tabs::Tab,
+    window::Window,
 };
 
 use anyhow::anyhow;

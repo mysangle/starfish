@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::shared::traits::{
+use crate::interface::{
     config::HasCssSystem,
     document::{Document, DocumentBuilder, DocumentFragment},
     html5::Html5Parser,

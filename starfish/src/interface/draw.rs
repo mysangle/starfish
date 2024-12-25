@@ -1,9 +1,14 @@
 use std::future::Future;
 
-use crate::shared::{
-    render_backend::{RenderBackend, SizeU32, WindowedEventLoop},
-    traits::config::HasDrawComponents,
-    types::Result,
+use crate::{
+    interface::{
+        config::HasDrawComponents,
+        render_backend::{RenderBackend, WindowedEventLoop},
+    },
+    shared::{
+        geo::SizeU32,
+        types::Result,
+    },
 };
 
 use url::Url;

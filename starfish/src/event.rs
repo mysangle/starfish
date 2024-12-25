@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use crate::{
-    shared::traits::config::ModuleConfiguration,
+    interface::config::ModuleConfiguration,
     tabs::Tab,
 };
 

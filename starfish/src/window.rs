@@ -3,9 +3,13 @@ use std::sync::Arc;
 use crate::{
     application::WindowOptions,
     event::StarfishEvent,
+    interface::{
+        config::ModuleConfiguration,
+        draw::TreeDrawer,
+        render_backend::{RenderBackend, WindowedEventLoop},
+    },
     shared::{
-        render_backend::{RenderBackend, SizeU32, WindowedEventLoop},
-        traits::{config::ModuleConfiguration, draw::TreeDrawer},
+        geo::SizeU32,
         types::Result,
     },
     tabs::{Tab, TabID, Tabs},

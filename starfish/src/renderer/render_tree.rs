@@ -1,11 +1,17 @@
 
 use crate::{
+    interface::{
+        config::{HasHtmlParser, HasRenderTree},
+        document::{Document, DocumentBuilder},
+        html5::Html5Parser,
+    },
     net::http::fetcher::Fetcher,
     shared::{
-        traits::config::{HasHtmlParser, HasRenderTree},
+        byte_stream::{ByteStream, Encoding},
+        document::DocumentHandle,
         types::Result,
     },
-    util::render_tree::RenderTree,
+    util::render_tree::{generate_render_tree, RenderTree},
 };
 
 use anyhow::bail;
@@ -38,6 +44,22 @@ pub(crate) async fn load_html_rendertree_fetcher<
     let html = String::from_utf8(response.body.clone())?;
     tracing::info!("\n{}", html);
 
-    Ok(RenderTree::with_capacity(1))
+    let mut stream = ByteStream::new(Encoding::UTF8, None);
+    stream.read_from_str(&html, Some(Encoding::UTF8));
+    stream.close();
+
+    let mut doc_handle = C::DocumentBuilder::new_document(Some(url));
+    let parse_errors = C::HtmlParser::parse(&mut stream, DocumentHandle::clone(&doc_handle), None)?;
+
+    for error in parse_errors {
+        eprintln!("Parse error: {:?}", error);
+    }
+
+    let mut doc = doc_handle.get_mut();
+    //doc.add_stylesheet(C::CssSystem::load_default_useragent_stylesheet());
+
+    drop(doc);
+
+    generate_render_tree(DocumentHandle::clone(&doc_handle))
 }
 

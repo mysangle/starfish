@@ -1,7 +1,7 @@
 
-use crate::shared::{
-    document::DocumentHandle,
-    traits::{config::HasDocument, document::DocumentFragment},
+use crate::{
+    interface::{config::HasDocument, document::DocumentFragment},
+    shared::document::DocumentHandle,
 };
 
 #[derive(PartialEq)]

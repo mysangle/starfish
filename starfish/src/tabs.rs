@@ -1,7 +1,7 @@
 
-use crate::shared::{
-    traits::{config::ModuleConfiguration, draw::TreeDrawer},
-    types::Result,
+use crate::{
+    interface::{config::ModuleConfiguration, draw::TreeDrawer},
+    shared::types::Result,
 };
 
 use slotmap::{DefaultKey, SlotMap};

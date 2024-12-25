@@ -1,12 +1,15 @@
 
 use crate::{
+    interface::{
+        config::{HasDrawComponents, HasHtmlParser},
+        draw::TreeDrawer,
+        render_backend::{
+            Brush, Color, Rect, RenderBackend, RenderRect, Scene as TScene, WindowedEventLoop,
+        },
+    },
     renderer::render_tree::load_html_rendertree,
     shared::{
-        render_backend::{
-            geo::FP,
-            Brush, Color, Rect, RenderBackend, RenderRect, Scene, SizeU32, WindowedEventLoop,
-        },
-        traits::{config::{HasDrawComponents, HasHtmlParser}, draw::TreeDrawer},
+        geo::{FP, SizeU32},
         types::Result,
     },
     util::render_tree::RenderTree,

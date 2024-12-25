@@ -11,10 +11,10 @@ use starfish::{
         },
         parser::Html5Parser,
     },
-    renderer::draw::TreeDrawerImpl,
-    shared::traits::config::{
+    interface::config::{
         HasCssSystem, HasDocument, HasHtmlParser, HasLayouter, HasRenderBackend, HasRenderTree, HasTreeDrawer, ModuleConfiguration,
     },
+    renderer::draw::TreeDrawerImpl,
     taffy::TaffyLayouter,
     util::render_tree::RenderTree,
     vello::VelloBackend,
