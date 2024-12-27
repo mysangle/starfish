@@ -19,6 +19,7 @@ pub trait Document<C: HasDocument<Document = Self>>: Sized + Display + Debug + P
 
     fn url(&self) -> Option<Url>;
 
+    fn doctype(&self) -> DocumentType;
     fn node_by_id(&self, node_id: NodeId) -> Option<&Self::Node>;
 
     fn add_stylesheet(&mut self, stylesheet: C::Stylesheet);

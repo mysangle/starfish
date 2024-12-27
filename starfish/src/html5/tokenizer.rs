@@ -122,6 +122,18 @@ impl<'stream> Tokenizer<'stream> {
         Ok(self.token_queue.remove(0))
     }
 
+    /**
+     * <!DOCTYPE html>
+     * : Token::DocType
+     * : Data -> TagOpen
+     *                   -> MarkupDeclarationOpen -> DOCTYPE -> BeforeDOCTYPEName -> DOCTYPEName -> Data
+     * <html>
+     * : Token::StartTag
+     * : Data -> TagOpen -> TagName -> Data
+     * </html>
+     * : Token::EndTag
+     * : Data -> TagOpen -> EndTagOpen -> TagName -> Data
+     */
     fn consume_stream(&mut self, parser_data: ParserData) -> Result<()> {
         loop {
             if !self.token_queue.is_empty() {
@@ -246,6 +258,182 @@ impl<'stream> Tokenizer<'stream> {
                         _ => self.add_to_token_name(c.into()),
                     }
                 }
+                State::MarkupDeclarationOpen => {
+                    if Character::slice_to_string(self.stream.get_slice(2)) == "--" {
+                        self.current_token = Some(Token::Comment {
+                            comment: String::new(),
+                            location: self.get_location(),
+                        });
+
+                        // Skip the two -- signs
+                        self.stream_next_n(2);
+
+                        self.state = State::CommentStart;
+                        continue;
+                    }
+
+                    if Character::slice_to_string(self.stream.get_slice(7)).to_uppercase() == "DOCTYPE" {
+                        self.stream_next_n(7);
+                        self.state = State::DOCTYPE;
+                        continue;
+                    }
+
+                    if Character::slice_to_string(self.stream.get_slice(7)) == "[CDATA[" {
+                        self.stream_next_n(6);
+                        let loc = self.get_location();
+                        self.stream_next_n(1);
+
+                        if parser_data.adjusted_node_namespace != HTML_NAMESPACE {
+                            self.state = State::CDATASection;
+                            continue;
+                        }
+
+                        self.parse_error(ParserError::CdataInHtmlContent, loc);
+                        self.current_token = Some(Token::Comment {
+                            comment: "[CDATA[".into(),
+                            location: self.get_location(),
+                        });
+
+                        self.state = State::BogusComment;
+                        continue;
+                    }
+
+                    self.parse_error(ParserError::IncorrectlyOpenedComment, self.get_location());
+                    self.current_token = Some(Token::Comment {
+                        comment: String::new(),
+                        location: self.last_token_location,
+                    });
+
+                    self.state = State::BogusComment;
+                }
+                State::DOCTYPE => {
+                    let loc = self.get_location();
+                    let c = self.read_char();
+                    match c {
+                        Ch(CHAR_TAB | CHAR_LF | CHAR_FF | CHAR_SPACE) => {
+                            self.state = State::BeforeDOCTYPEName;
+                        }
+                        Ch('>') => {
+                            self.stream_prev();
+                            self.state = State::BeforeDOCTYPEName;
+                        }
+                        StreamEnd => {
+                            self.parse_error(ParserError::EofInDoctype, loc);
+
+                            self.emit_token(Token::DocType {
+                                name: None,
+                                force_quirks: true,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.get_location(),
+                            });
+
+                            self.state = State::Data;
+                        }
+                        _ => {
+                            self.parse_error(ParserError::MissingWhitespaceBeforeDoctypeName, loc);
+                            self.stream_prev();
+                            self.state = State::BeforeDOCTYPEName;
+                        }
+                    }
+                }
+                State::BeforeDOCTYPEName => {
+                    let loc = self.get_location();
+                    let c = self.read_char();
+                    match c {
+                        Ch(CHAR_TAB | CHAR_LF | CHAR_FF | CHAR_SPACE) => {
+                            // ignore
+                        }
+                        Ch(ch @ 'A'..='Z') => {
+                            self.current_token = Some(Token::DocType {
+                                name: None,
+                                force_quirks: false,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.last_token_location,
+                            });
+
+                            self.add_to_token_name(to_lowercase!(ch));
+                            self.state = State::DOCTYPEName;
+                        }
+                        Ch(CHAR_NUL) => {
+                            self.parse_error(ParserError::UnexpectedNullCharacter, loc);
+                            self.current_token = Some(Token::DocType {
+                                name: None,
+                                force_quirks: false,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.last_token_location,
+                            });
+
+                            self.add_to_token_name(CHAR_REPLACEMENT);
+                            self.state = State::DOCTYPEName;
+                        }
+                        Ch('>') => {
+                            self.parse_error(ParserError::MissingDoctypeName, loc);
+                            self.emit_token(Token::DocType {
+                                name: None,
+                                force_quirks: true,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.last_token_location,
+                            });
+
+                            self.state = State::Data;
+                        }
+
+                        StreamEnd => {
+                            self.parse_error(ParserError::EofInDoctype, loc);
+
+                            self.emit_token(Token::DocType {
+                                name: None,
+                                force_quirks: true,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.last_token_location,
+                            });
+
+                            self.state = State::Data;
+                        }
+                        _ => {
+                            self.current_token = Some(Token::DocType {
+                                name: None,
+                                force_quirks: false,
+                                pub_identifier: None,
+                                sys_identifier: None,
+                                location: self.last_token_location,
+                            });
+
+                            self.add_to_token_name(c.into());
+                            self.state = State::DOCTYPEName;
+                        }
+                    }
+                }
+                State::DOCTYPEName => {
+                    let loc = self.get_location();
+                    let c = self.read_char();
+                    match c {
+                        Ch(CHAR_TAB | CHAR_LF | CHAR_FF | CHAR_SPACE) => {
+                            self.state = State::AfterDOCTYPEName;
+                        }
+                        Ch('>') => {
+                            self.emit_current_token();
+                            self.state = State::Data;
+                        }
+                        Ch(ch @ 'A'..='Z') => self.add_to_token_name(to_lowercase!(ch)),
+                        Ch(CHAR_NUL) => {
+                            self.parse_error(ParserError::UnexpectedNullCharacter, loc);
+                            self.add_to_token_name(CHAR_REPLACEMENT);
+                        }
+                        StreamEnd => {
+                            self.parse_error(ParserError::EofInDoctype, loc);
+                            self.set_quirks_mode(true);
+                            self.emit_current_token();
+                            self.state = State::Data;
+                        }
+                        _ => self.add_to_token_name(c.into()),
+                    }
+                }
                 _ => {
 
                 }
@@ -354,6 +542,18 @@ impl<'stream> Tokenizer<'stream> {
 
         self.location_handler.dec();
         self.stream.prev();
+    }
+
+    fn stream_next_n(&mut self, n: usize) {
+        for _ in 0..n {
+            self.stream_read_and_next();
+        }
+    }
+
+    fn set_quirks_mode(&mut self, quirky: bool) {
+        if let Token::DocType { force_quirks, .. } = &mut self.current_token.as_mut().unwrap() {
+            *force_quirks = quirky;
+        }
     }
 
     pub(crate) fn is_noncharacter(&self, num: u32) -> bool {

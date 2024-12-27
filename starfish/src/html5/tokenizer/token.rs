@@ -81,6 +81,17 @@ impl std::fmt::Display for Token {
 }
 
 impl Token {
+    pub fn get_location(&self) -> Location {
+        match self {
+            Token::DocType { location, .. } => *location,
+            Token::StartTag { location, .. } => *location,
+            Token::EndTag { location, .. } => *location,
+            Token::Comment { location, .. } => *location,
+            Token::Text { location, .. } => *location,
+            Token::Eof { location, .. } => *location,
+        }
+    }
+    
     pub fn is_eof(&self) -> bool {
         matches!(self, Token::Eof { .. })
     }
