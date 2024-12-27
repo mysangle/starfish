@@ -36,6 +36,16 @@ pub enum Character {
 
 use Character::*;
 
+impl From<&Character> for char {
+    fn from(c: &Character) -> Self {
+        match c {
+            Ch(c) => *c,
+            Surrogate(..) => 0x0000 as char,
+            StreamEmpty | StreamEnd => 0x0000 as char,
+        }
+    }
+}
+
 impl From<Character> for char {
     fn from(c: Character) -> Self {
         match c {
@@ -43,6 +53,23 @@ impl From<Character> for char {
             Surrogate(..) => 0x0000 as char,
             StreamEmpty | StreamEnd => 0x0000 as char,
         }
+    }
+}
+
+impl fmt::Display for Character {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Ch(ch) => write!(f, "{ch}"),
+            Surrogate(surrogate) => write!(f, "U+{surrogate:04X}"),
+            StreamEnd => write!(f, "StreamEnd"),
+            StreamEmpty => write!(f, "StreamEmpty"),
+        }
+    }
+}
+
+impl Character {
+    pub fn slice_to_string(v: Vec<Character>) -> String {
+        v.iter().map(char::from).collect()
     }
 }
 
@@ -74,6 +101,9 @@ pub trait Stream {
     fn next_n(&self, offset: usize);
     fn prev(&self);
     fn prev_n(&self, n: usize);
+    fn seek_bytes(&self, offset: usize);
+    fn tell_bytes(&self) -> usize;
+    fn get_slice(&self, len: usize) -> Vec<Character>;
     fn close(&mut self);
     fn closed(&self) -> bool;
     fn exhausted(&self) -> bool;
@@ -322,6 +352,28 @@ impl Stream for ByteStream {
                 self.move_back(1);
             }
         }
+    }
+
+    fn seek_bytes(&self, offset: usize) {
+        let mut pos = self.buffer_pos.borrow_mut();
+        *pos = offset;
+    }
+
+    fn tell_bytes(&self) -> usize {
+        *self.buffer_pos.borrow()
+    }
+
+    fn get_slice(&self, len: usize) -> Vec<Character> {
+        let current_pos = self.tell_bytes();
+
+        let mut slice = Vec::with_capacity(len);
+        for _ in 0..len {
+            slice.push(self.read_and_next());
+        }
+
+        self.seek_bytes(current_pos);
+
+        slice.clone()
     }
 
     fn close(&mut self) {

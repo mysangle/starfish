@@ -3,12 +3,12 @@ use std::{cell::RefCell, rc::Rc};
 use crate::{
     html5::{
         node::HTML_NAMESPACE,
-        parser::errors::ErrorLogger,
+        parser::errors::{ErrorLogger, ParserError},
         tokenizer::{token::Token, ParserData, Tokenizer},
     },
     interface::{
         config::HasDocument,
-        document::Document,
+        document::{Document, DocumentType},
         node::{ElementDataType, Node},
         html5::ParserOptions,
     },
@@ -21,6 +21,12 @@ use crate::{
 };
 
 pub mod errors;
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum InsertionMode {
+    Initial,
+    BeforeHtml,
+}
 
 macro_rules! get_node_by_id {
     ($doc_handle:expr, $id:expr) => {
@@ -79,6 +85,7 @@ enum DispatcherMode {
 
 pub struct Html5Parser<'tokens, C: HasDocument> {
     tokenizer: Tokenizer<'tokens>,
+    insertion_mode: InsertionMode,
     current_token: Token,
     scripting_enabled: bool,
     reprocess_token: bool,
@@ -86,6 +93,7 @@ pub struct Html5Parser<'tokens, C: HasDocument> {
     document: DocumentHandle<C>,
     is_fragment_case: bool,
     error_logger: Rc<RefCell<ErrorLogger>>,
+    ignore_lf: bool,
     token_queue: Vec<Token>,
     parser_finished: bool,
     context_node_id: Option<NodeId>,
@@ -109,6 +117,7 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
     ) -> Self {
         Self {
             tokenizer,
+            insertion_mode: InsertionMode::Initial,
             current_token: Token::Eof {
                 location: Location::default(),
             },
@@ -118,6 +127,7 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
             document,
             is_fragment_case: false,
             error_logger,
+            ignore_lf: false,
             token_queue: vec![],
             parser_finished: false,
             context_node_id: None,
@@ -182,6 +192,9 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
     }
 
     fn select_dispatch_mode(&self) -> DispatcherMode {
+        if self.open_elements.is_empty() {
+            return DispatcherMode::Html;
+        }
         return DispatcherMode::Html;
     }
 
@@ -190,9 +203,104 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
     }
 
     fn process_html_content(&mut self) {
+        if self.ignore_lf {
+            if let Token::Text { text: value, location } = &self.current_token {
+                if value.starts_with('\n') {
+                    // We don't need to skip 1 char, but we can skip 1 byte, as we just checked for \n
+                    self.current_token = Token::Text {
+                        text: value.chars().skip(1).collect::<String>(),
+                        location: *location,
+                    };
+                }
+            }
+            self.ignore_lf = false;
+        }
+
+        // match self.insertion_mode {
+        //     InsertionMode::Initial => {
+        //         let mut anything_else = false;
+
+        //         match &self.current_token.clone() {
+        //             Token::Text { text: value, .. } if self.current_token.is_mixed() => {
+        //                 let tokens = self.split_mixed_token(value);
+        //                 self.tokenizer.insert_tokens_at_queue_start(&tokens);
+        //                 return;
+        //             }
+        //             Token::Text { .. } if self.current_token.is_empty_or_white() => {
+        //                 // ignore token
+        //             }
+        //             Token::Comment { .. } => {
+        //                 self.insert_comment_element(&self.current_token.clone(), Some(NodeId::root()));
+        //             }
+        //             Token::DocType {
+        //                 name,
+        //                 pub_identifier,
+        //                 sys_identifier,
+        //                 force_quirks,
+        //                 ..
+        //             } => {
+        //                 if name.is_some() && name.as_ref().unwrap() != "html"
+        //                     || pub_identifier.is_some()
+        //                     || (sys_identifier.is_some() && sys_identifier.as_ref().unwrap() != "about:legacy-compat")
+        //                 {
+        //                     self.parse_error("doctype not allowed in initial insertion mode");
+        //                 }
+
+        //                 self.insert_doctype_element(&self.current_token.clone());
+
+        //                 if !self.is_iframesrcdoc() && !self.parser_cannot_change_mode {
+        //                     self.set_quirks_mode(self.identify_quirks_mode(
+        //                         name,
+        //                         pub_identifier.clone(),
+        //                         sys_identifier.clone(),
+        //                         *force_quirks,
+        //                     ));
+        //                 }
+
+        //                 self.insertion_mode = InsertionMode::BeforeHtml;
+        //             }
+        //             Token::StartTag { .. } => {
+        //                 if !self.is_iframesrcdoc() {
+        //                     self.parse_error(ParserError::ExpectedDocTypeButGotStartTag.as_str());
+        //                 }
+        //                 anything_else = true;
+        //             }
+        //             Token::EndTag { .. } => {
+        //                 if !self.is_iframesrcdoc() {
+        //                     self.parse_error(ParserError::ExpectedDocTypeButGotEndTag.as_str());
+        //                 }
+        //                 anything_else = true;
+        //             }
+        //             Token::Text { .. } => {
+        //                 if !self.is_iframesrcdoc() {
+        //                     self.parse_error(ParserError::ExpectedDocTypeButGotChars.as_str());
+        //                 }
+        //                 anything_else = true;
+        //             }
+        //             Token::Eof { .. } => anything_else = true,
+        //         }
+
+        //         if anything_else {
+        //             if !self.parser_cannot_change_mode {
+        //                 self.set_quirks_mode(QuirksMode::Quirks);
+        //             }
+
+        //             self.insertion_mode = InsertionMode::BeforeHtml;
+        //             self.reprocess_token = true;
+        //         }
+        //     }
+        //     InsertionMode::BeforeHtml => {
+
+        //     }
+        // }
+
         if self.current_token.is_eof() {
             self.stop_parsing();
         }
+    }
+
+    fn is_iframesrcdoc(&self) -> bool {
+        self.document.get().doctype() == DocumentType::IframeSrcDoc
     }
 
     /// Fetches the next token from the tokenizer. However, if the token is a text token AND
@@ -245,5 +353,15 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
 
     fn stop_parsing(&mut self) {
         self.parser_finished = true;
+    }
+
+    pub fn get_parse_errors(&self) -> Vec<ParseError> {
+        self.error_logger.borrow().get_errors().clone()
+    }
+
+    fn parse_error(&self, message: &str) {
+        self.error_logger
+            .borrow_mut()
+            .add_error(self.current_token.get_location(), message);
     }
 }

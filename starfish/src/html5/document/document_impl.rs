@@ -70,6 +70,10 @@ impl<C: HasDocument<Document = Self>> Document<C> for DocumentImpl<C> {
         self.url.clone()
     }
 
+    fn doctype(&self) -> DocumentType {
+        self.doctype
+    }
+
     fn node_by_id(&self, node_id: NodeId) -> Option<&Self::Node> {
         self.arena.node_ref(node_id)
     }
