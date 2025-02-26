@@ -34,8 +34,11 @@ pub trait Node<C: HasDocument>: Clone + Debug + PartialEq {
     fn set_id(&mut self, id: NodeId);
     fn set_registered(&mut self, registered: bool);
     fn is_registered(&self) -> bool;
+    fn children(&self) -> &[NodeId];
     fn type_of(&self) -> NodeType;
     fn is_element_node(&self) -> bool;
     fn get_element_data(&self) -> Option<&Self::ElementData>;
     fn get_element_data_mut(&mut self) -> Option<&mut Self::ElementData>;
+    fn insert(&mut self, node_id: NodeId, idx: usize);
+    fn push(&mut self, node_id: NodeId);
 }

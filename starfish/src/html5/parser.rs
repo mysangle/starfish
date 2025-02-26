@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
     html5::{
@@ -21,6 +21,8 @@ use crate::{
 };
 
 pub mod errors;
+#[macro_use]
+mod helper;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum InsertionMode {
@@ -349,6 +351,56 @@ impl<'a, C: HasDocument> Html5Parser<'a, C> {
         }
 
         current_node!(self)
+    }
+
+    fn create_node(&self, token: &Token, namespace: &str) -> C::Node {
+        match token {
+            Token::DocType {
+                name,
+                force_quirks: _,
+                pub_identifier,
+                sys_identifier,
+                location,
+            } => C::Document::new_doctype_node(
+                self.document.clone(),
+                &name.clone().unwrap_or_default(),
+                match pub_identifier {
+                    Some(value) => Some(value.as_str()),
+                    None => None,
+                },
+                match sys_identifier {
+                    Some(value) => Some(value.as_str()),
+                    None => None,
+                },
+                *location,
+            ),
+            Token::StartTag {
+                name,
+                attributes,
+                location,
+                ..
+            } => C::Document::new_element_node(
+                self.document.clone(),
+                name,
+                namespace.into(),
+                attributes.clone(),
+                *location,
+            ),
+            Token::EndTag { name, location, .. } => {
+                C::Document::new_element_node(self.document.clone(), name, namespace.into(), HashMap::new(), *location)
+            }
+            Token::Comment {
+                comment: value,
+                location,
+                ..
+            } => C::Document::new_comment_node(self.document.clone(), value, *location),
+            Token::Text {
+                text: value, location, ..
+            } => C::Document::new_text_node(self.document.clone(), value.as_str(), *location),
+            Token::Eof { .. } => {
+                panic!("EOF token not allowed");
+            }
+        }
     }
 
     fn stop_parsing(&mut self) {

@@ -45,6 +45,14 @@ impl<C: HasDocument> NodeArena<C> {
         self.nodes.get(&node_id)
     }
 
+    pub fn node(&self, node_id: NodeId) -> Option<C::Node> {
+        self.nodes.get(&node_id).cloned()
+    }
+
+    pub fn update_node(&mut self, node: C::Node) {
+        self.nodes.insert(node.id(), node);
+    }
+
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }

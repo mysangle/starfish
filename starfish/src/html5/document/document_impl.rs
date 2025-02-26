@@ -6,7 +6,18 @@ use std::{
 use crate::{
     html5::{
         document::task_queue::is_valid_id_attribute_value,
-        node::{arena::NodeArena, node_impl::NodeImpl},
+        node::{
+            arena::NodeArena,
+            data::{
+                comment::CommentData,
+                doctype::DocTypeData,
+                document::DocumentData,
+                element::{ClassListImpl, ElementData},
+                text::TextData,
+            },
+            node_impl::{NodeDataTypeInternal, NodeImpl},
+            HTML_NAMESPACE,
+        },
     },
     interface::{
         config::HasDocument,
@@ -86,6 +97,48 @@ impl<C: HasDocument<Document = Self>> Document<C> for DocumentImpl<C> {
         self.arena.node_ref(NodeId::root()).expect("Root node not found !?")
     }
 
+    fn attach_node(&mut self, node_id: NodeId, parent_id: NodeId, position: Option<usize>) {
+        // Check if any children of node have parent as child. This will keep adding the node to itself
+        if parent_id == node_id || self.has_node_id_recursive(node_id, parent_id) {
+            return;
+        }
+
+        if let Some(parent_node) = self.node_by_id(parent_id) {
+            let mut parent_node = parent_node.clone();
+
+            // Make sure position can never be larger than the number of children in the parent
+            match position {
+                Some(position) => {
+                    if position > parent_node.children().len() {
+                        parent_node.push(node_id);
+                    } else {
+                        parent_node.insert(node_id, position);
+                    }
+                }
+                None => {
+                    // No position given, add to end of the children list
+                    parent_node.push(node_id);
+                }
+            }
+
+            self.update_node(parent_node);
+        }
+
+        let mut node = self.arena.node(node_id).unwrap();
+        node.parent = Some(parent_id);
+        self.update_node(node);
+    }
+
+    fn update_node(&mut self, node: Self::Node) {
+        if !node.is_registered() {
+            tracing::warn!("Node is not registered to the arena");
+            return;
+        }
+
+        self.on_document_node_mutation(&node);
+        self.arena.update_node(node);
+    }
+
     fn node_count(&self) -> usize {
         self.arena.node_count()
     }
@@ -106,6 +159,82 @@ impl<C: HasDocument<Document = Self>> Document<C> for DocumentImpl<C> {
         self.arena.register_node_with_node_id(node, node_id);
 
         node_id
+    }
+
+    fn register_node_at(&mut self, node: Self::Node, parent_id: NodeId, position: Option<usize>) -> NodeId {
+        self.on_document_node_mutation(&node);
+
+        let node_id = self.register_node(node);
+        self.attach_node(node_id, parent_id, position);
+
+        node_id
+    }
+
+    fn new_document_node(handle: DocumentHandle<C>, quirks_mode: QuirksMode, location: Location) -> Self::Node {
+        NodeImpl::new(
+            handle.clone(),
+            location,
+            &NodeDataTypeInternal::Document(DocumentData::new(quirks_mode)),
+        )
+    }
+
+    fn new_doctype_node(
+        handle: DocumentHandle<C>,
+        name: &str,
+        public_id: Option<&str>,
+        system_id: Option<&str>,
+        location: Location,
+    ) -> Self::Node {
+        NodeImpl::new(
+            handle.clone(),
+            location,
+            &NodeDataTypeInternal::DocType(DocTypeData::new(name, public_id.unwrap_or(""), system_id.unwrap_or(""))),
+        )
+    }
+
+    /// Creates a new comment node
+    fn new_comment_node(handle: DocumentHandle<C>, comment: &str, location: Location) -> Self::Node {
+        NodeImpl::new(
+            handle.clone(),
+            location,
+            &NodeDataTypeInternal::Comment(CommentData::with_value(comment)),
+        )
+    }
+
+    /// Creates a new text node
+    fn new_text_node(handle: DocumentHandle<C>, value: &str, location: Location) -> Self::Node {
+        NodeImpl::new(
+            handle.clone(),
+            location,
+            &NodeDataTypeInternal::Text(TextData::with_value(value)),
+        )
+    }
+
+    /// Creates a new element node
+    fn new_element_node(
+        handle: DocumentHandle<C>,
+        name: &str,
+        namespace: Option<&str>,
+        attributes: HashMap<String, String>,
+        location: Location,
+    ) -> Self::Node {
+        // Extract class list from the class-attribute (if exists)
+        let class_list = match attributes.get("class") {
+            Some(class_value) => ClassListImpl::from(class_value.as_str()),
+            None => ClassListImpl::default(),
+        };
+
+        NodeImpl::new(
+            handle.clone(),
+            location,
+            &NodeDataTypeInternal::Element(ElementData::new(
+                handle.clone(),
+                name,
+                namespace,
+                attributes,
+                class_list,
+            )),
+        )
     }
 }
 
@@ -140,6 +269,24 @@ impl<C: HasDocument<Document = Self>> DocumentImpl<C> {
     }
 
     pub fn print_tree(&self, node: &C::Node, prefix: String, last: bool, f: &mut Formatter) {
+    }
+
+    pub fn has_node_id_recursive(&self, parent_id: NodeId, target_node_id: NodeId) -> bool {
+        let parent = self.arena.node_ref(parent_id);
+        if parent.is_none() {
+            return false;
+        }
+
+        for child_node_id in parent.unwrap().children() {
+            if *child_node_id == target_node_id {
+                return true;
+            }
+            if self.has_node_id_recursive(*child_node_id, target_node_id) {
+                return true;
+            }
+        }
+
+        false
     }
 }
 

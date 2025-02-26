@@ -4,8 +4,11 @@ use crate::{
     html5::{
         document::document_impl::DocumentImpl,
         node::data::{
+            comment::CommentData,
+            doctype::DocTypeData,
             document::DocumentData,
             element::ElementData,
+            text::TextData,
         },
     },
     interface::{
@@ -25,11 +28,11 @@ pub enum NodeDataTypeInternal<C: HasDocument> {
     /// Represents a document
     Document(DocumentData),
     // Represents a doctype
-    //DocType(DocTypeData),
+    DocType(DocTypeData),
     /// Represents a text
-    //Text(TextData),
+    Text(TextData),
     /// Represents a comment
-    //Comment(CommentData),
+    Comment(CommentData),
     /// Represents an element
     Element(ElementData<C>),
 }
@@ -63,12 +66,24 @@ impl<C: HasDocument<Document = DocumentImpl<C>>> Node<C> for NodeImpl<C> {
         self.id = id
     }
 
+    fn set_registered(&mut self, registered: bool) {
+        self.registered = registered;
+    }
+
+    fn is_registered(&self) -> bool {
+        self.registered
+    }
+
+    fn children(&self) -> &[NodeId] {
+        self.children.as_slice()
+    }
+
     fn type_of(&self) -> NodeType {
         match self.data {
             NodeDataTypeInternal::Document(_) => NodeType::DocumentNode,
-            //NodeDataTypeInternal::DocType(_) => NodeType::DocTypeNode,
-            //NodeDataTypeInternal::Text(_) => NodeType::TextNode,
-            //NodeDataTypeInternal::Comment(_) => NodeType::CommentNode,
+            NodeDataTypeInternal::DocType(_) => NodeType::DocTypeNode,
+            NodeDataTypeInternal::Text(_) => NodeType::TextNode,
+            NodeDataTypeInternal::Comment(_) => NodeType::CommentNode,
             NodeDataTypeInternal::Element(_) => NodeType::ElementNode,
         }
     }
@@ -91,12 +106,12 @@ impl<C: HasDocument<Document = DocumentImpl<C>>> Node<C> for NodeImpl<C> {
         None
     }
 
-    fn set_registered(&mut self, registered: bool) {
-        self.registered = registered;
+    fn insert(&mut self, node_id: NodeId, idx: usize) {
+        self.children.insert(idx, node_id);
     }
 
-    fn is_registered(&self) -> bool {
-        self.registered
+    fn push(&mut self, node_id: NodeId) {
+        self.children.push(node_id);
     }
 }
 

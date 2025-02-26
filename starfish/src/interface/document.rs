@@ -1,8 +1,15 @@
-use std::fmt::{Debug, Display};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+};
 
 use crate::{
-    interface::{config::HasDocument, node::Node},
+    interface::{
+        config::HasDocument,
+        node::{Node, QuirksMode},
+    },
     shared::{
+        byte_stream::Location,
         document::DocumentHandle,
         node::NodeId,
     },
@@ -25,12 +32,34 @@ pub trait Document<C: HasDocument<Document = Self>>: Sized + Display + Debug + P
     fn add_stylesheet(&mut self, stylesheet: C::Stylesheet);
     /// Return the root node of the document
     fn get_root(&self) -> &Self::Node;
+    fn attach_node(&mut self, node_id: NodeId, parent_id: NodeId, position: Option<usize>);
+
+    fn update_node(&mut self, node: Self::Node);
 
     /// Return number of nodes in the document
     fn node_count(&self) -> usize;
 
     /// Register a new node
     fn register_node(&mut self, node: Self::Node) -> NodeId;
+    fn register_node_at(&mut self, node: Self::Node, parent_id: NodeId, position: Option<usize>) -> NodeId;
+
+    fn new_document_node(handle: DocumentHandle<C>, quirks_mode: QuirksMode, location: Location) -> Self::Node;
+    fn new_doctype_node(
+        handle: DocumentHandle<C>,
+        name: &str,
+        public_id: Option<&str>,
+        system_id: Option<&str>,
+        location: Location,
+    ) -> Self::Node;
+    fn new_comment_node(handle: DocumentHandle<C>, comment: &str, location: Location) -> Self::Node;
+    fn new_text_node(handle: DocumentHandle<C>, value: &str, location: Location) -> Self::Node;
+    fn new_element_node(
+        handle: DocumentHandle<C>,
+        name: &str,
+        namespace: Option<&str>,
+        attributes: HashMap<String, String>,
+        location: Location,
+    ) -> Self::Node;
 }
 
 pub trait DocumentFragment<C: HasDocument>: Sized + Clone + PartialEq {
